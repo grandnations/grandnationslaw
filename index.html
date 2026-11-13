@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Undang-Undang — Grand Nations</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#000; --bg2:#0a0a0a; --ink:#fff; --dim:#a9a9a9; --line:rgba(255,255,255,.18); --head:'Poppins',sans-serif; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--head); margin: 0; padding: 0; }
+  .header { padding: 20px 40px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 0.1em; }
+  .header a { color: var(--dim); text-decoration: none; font-size: 0.9rem; }
+  .wrap { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+  .law-card { background: var(--bg2); border: 1px solid var(--line); padding: 20px; margin-bottom: 20px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+  .law-card:hover { border-color: #fff; transform: translateY(-2px); }
+  .law-category { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: #ffc800; margin-bottom: 10px; }
+  .law-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; }
+  .law-content { display: none; color: var(--dim); font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; margin-top: 20px; border-top: 1px solid var(--line); padding-top: 20px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Undang-Undang Grand Nations</h1>
+  <a href="https://grandnations.github.io/">← Kembali ke Beranda</a>
+</div>
+
+<div class="wrap" id="law-container">
+  <p style="color: var(--dim); text-align: center;">Memuat daftar undang-undang...</p>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCYben87_XUeQdJxZ3DNeSO7pv3upsGXYc",
+    authDomain: "grand-nations-bcf65.firebaseapp.com",
+    projectId: "grand-nations-bcf65",
+    storageBucket: "grand-nations-bcf65.firebasestorage.app",
+    messagingSenderId: "266950230750",
+    appId: "1:266950230750:web:60c88d8abae6590bd4384f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  async function loadLaws() {
+    const container = document.getElementById('law-container');
+    try {
+      // Ambil data dari tabel 'laws', urutkan berdasarkan kategori/tanggal
+      const q = query(collection(db, "laws")); 
+      const snap = await getDocs(q);
+      
+      if (snap.empty) {
+        container.innerHTML = '<p style="color: var(--dim); text-align: center;">Belum ada undang-undang yang ditambahkan.</p>';
+        return;
+      }
+
+      container.innerHTML = '';
+      snap.forEach((doc) => {
+        const data = doc.data();
+        container.innerHTML += `
+          <div class="law-card" onclick="this.querySelector('.law-content').style.display = this.querySelector('.law-content').style.display === 'block' ? 'none' : 'block'">
+            <div class="law-category">${data.category || 'UMUM'}</div>
+            <div class="law-title">${data.title}</div>
+            <div class="law-content">${data.content}</div>
+          </div>
+        `;
+      });
+    } catch (e) {
+      container.innerHTML = `<p style="color: red; text-align: center;">Gagal memuat data: ${e.message}</p>`;
+    }
+  }
+
+  loadLaws();
+</script>
+</body>
+</html>
