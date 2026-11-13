@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin UU — Grand Nations</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#000; --bg2:#0a0a0a; --ink:#fff; --dim:#a9a9a9; --line:rgba(255,255,255,.18); --head:'Poppins',sans-serif; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--head); margin: 0; padding: 40px; }
+  .wrap { max-width: 800px; margin: 0 auto; }
+  input, textarea { width: 100%; padding: 12px; background: #111; border: 1px solid var(--line); color: #fff; font-family: var(--head); margin-bottom: 15px; border-radius: 4px; box-sizing: border-box; }
+  button { padding: 10px 20px; background: #fff; color: #000; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
+  .law-item { background: var(--bg2); border: 1px solid var(--line); padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h2>Panel Admin Undang-Undang</h2>
+  <p style="color: var(--dim); margin-bottom: 30px;">Hanya email administrator yang bisa mengakses halaman ini.</p>
+
+  <div id="form-container" style="display: none;">
+    <h3 id="form-title">Tambah UU Baru</h3>
+    <input type="hidden" id="law-id">
+    <input type="text" id="law-title" placeholder="Judul UU (Contoh: UU No. 1 tentang Kenegaraan)">
+    <input type="text" id="law-category" placeholder="Kategori (Contoh: Konstitusi / Pidana / RP Rules)">
+    <textarea id="law-content" rows="8" placeholder="Isi lengkap undang-undang..."></textarea>
+    <button id="btn-save">Simpan UU</button>
+    <button id="btn-cancel" style="background: transparent; color: #fff; border: 1px solid #fff; display: none;">Batal</button>
+  </div>
+
+  <h3 style="margin-top: 40px;">Daftar UU Tersimpan</h3>
+  <div id="list-container">Memuat data...</div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+  import { getFirestore, collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCYben87_XUeQdJxZ3DNeSO7pv3upsGXYc",
+    authDomain: "grand-nations-bcf65.firebaseapp.com",
+    projectId: "grand-nations-bcf65",
+    storageBucket: "grand-nations-bcf65.firebasestorage.app",
+    messagingSenderId: "266950230750",
+    appId: "1:266950230750:web:60c88d8abae6590bd4384f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Cek apakah admin
+      const adminSnap = await getDoc(doc(db, "admins", user.email));
+      if (adminSnap.exists()) {
+        document.getElementById('form-container').style.display = 'block';
+        loadLawsList();
+      } else {
+        document.body.innerHTML = "<h2 style='text-align:center; color:#ff4d4d;'>⛔ Akses Ditolak: Kamu bukan Admin.</h2>";
+      }
+    } else {
+      document.body.innerHTML = "<h2 style='text-align:center; color:#ffc800;'>Silakan login melalui website utama Grand Nations terlebih dahulu.</h2>";
+    }
+  });
+
+  async function loadLawsList() {
+    const container = document.getElementById('list-container');
+    const snap = await getDocs(collection(db, "laws"));
+    container.innerHTML = '';
+    
+    if (snap.empty) {
+      container.innerHTML = '<p style="color: var(--dim);">Belum ada UU.</p>';
+      return;
+    }
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      container.innerHTML += `
+        <div class="law-item">
+          <div>
+            <div style="font-weight: bold;">${data.title}</div>
+            <div style="font-size: 0.8rem; color: var(--dim);">${data.category}</div>
+          </div>
+          <div>
+            <button onclick="editLaw('${docSnap.id}', '${data.title}', '${data.category}', \`${data.content.replace(/`/g, '\\`')}\`)">Edit</button>
+            <button onclick="deleteLaw('${docSnap.id}')" style="background: #ff4d4d; color: #fff; margin-left: 5px;">Hapus</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  window.deleteLaw = async (id) => {
+    if (!confirm("Yakin ingin menghapus UU ini?")) return;
+    await deleteDoc(doc(db, "laws", id));
+    loadLawsList();
+  };
+
+  window.editLaw = (id, title, category, content) => {
+    document.getElementById('law-id').value = id;
+    document.getElementById('law-title').value = title;
+    document.getElementById('law-category').value = category;
+    document.getElementById('law-content').value = content;
+    
+    document.getElementById('form-title').textContent = "Edit UU";
+    document.getElementById('btn-cancel').style.display = "inline-block";
+    window.scrollTo(0, 0);
+  };
+
+  document.getElementById('btn-cancel').addEventListener('click', () => {
+    document.getElementById('law-id').value = '';
+    document.getElementById('law-title').value = '';
+    document.getElementById('law-category').value = '';
+    document.getElementById('law-content').value = '';
+    document.getElementById('form-title').textContent = "Tambah UU Baru";
+    document.getElementById('btn-cancel').style.display = "none";
+  });
+
+  document.getElementById('btn-save').addEventListener('click', async () => {
+    const id = document.getElementById('law-id').value;
+    const title = document.getElementById('law-title').value;
+    const category = document.getElementById('law-category').value;
+    const content = document.getElementById('law-content').value;
+
+    if (!title || !content) return alert("Judul dan isi UU tidak boleh kosong!");
+
+    try {
+      if (id) {
+        // Update UU
+        await updateDoc(doc(db, "laws", id), { title, category, content, updated_at: serverTimestamp() });
+        alert("UU berhasil diperbarui!");
+      } else {
+        // Tambah UU Baru
+        await addDoc(collection(db, "laws"), { title, category, content, updated_at: serverTimestamp() });
+        alert("UU baru berhasil ditambahkan!");
+      }
+      
+      // Reset form
+      document.getElementById('btn-cancel').click();
+      loadLawsList();
+    } catch (e) {
+      alert("Gagal menyimpan: " + e.message);
+    }
+  });
+</script>
+</body>
+</html>
